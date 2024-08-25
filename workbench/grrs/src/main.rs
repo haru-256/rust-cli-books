@@ -1,11 +1,8 @@
-use clap::{error, Parser};
-use core::panic;
-use std::error::Error;
+use anyhow::{self, Context};
+use clap::Parser;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-
-mod utils;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -31,10 +28,11 @@ fn validate_path(s: &str) -> Result<PathBuf, String> {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
-    let f = File::open(&args.path)?;
+    let f =
+        File::open(&args.path).with_context(|| format!("failed to open file: {:?}", &args.path))?;
     let br = BufReader::new(f);
 
     for line in br.lines() {
