@@ -1,37 +1,54 @@
-use clap::Parser;
+use clap::{error, Parser};
+use core::panic;
+use std::error::Error;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
+
+mod utils;
 
 #[derive(Parser, Debug)]
 #[command(
-    author = "haru256",
-    version = "0.1.0",
-    about = "grep by rust",
+    author,
+    version,
+    about,
     long_about = None
 )]
 struct Cli {
-    #[arg(value_name = "PATTERN", value_parser=validate_pattern)]
+    // #[arg(value_name = "PATTERN", value_parser=validate_pattern)]
+    #[arg(value_name = "PATTERN", help="Search this pattern", value_parser=clap::builder::NonEmptyStringValueParser::new())]
     pattern: String,
-    #[arg(value_name = "PATH", value_parser=validate_path)]
+    #[arg(value_name = "PATH", help="File path for search", value_parser=validate_path)]
     path: PathBuf,
 }
 
-fn validate_pattern(s: &str) -> Result<(), String> {
-    if s.is_empty() {
-        Err(String::from("pattern is empty"))
-    } else {
-        Ok(())
-    }
-}
-
-fn validate_path(s: &str) -> Result<(), String> {
-    if PathBuf::from(s).exists() {
-        Ok(())
+fn validate_path(s: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(s);
+    if path.exists() {
+        Ok(path)
     } else {
         Err(String::from("path not found"))
     }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    println!("pattern: {:?}, path: {:?}", args.pattern, args.path);
+
+    let f = File::open(&args.path)?;
+    let br = BufReader::new(f);
+
+    for line in br.lines() {
+        let content = match line {
+            Ok(l) => l,
+            Err(e) => {
+                return Err(e.into());
+            }
+        };
+
+        if content.contains(&args.pattern) {
+            println!("{}", content);
+        }
+    }
+
+    Ok(())
 }
